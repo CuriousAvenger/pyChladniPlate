@@ -77,7 +77,7 @@ if __name__ == '__main__':
     }
     scales = [1.0, 0.8, 0.6, 0.4, 0.2]
     freq_range = (0.0, 300.0, 1.0)
-    target_path = 'test_images/image2.png'
+    target_path = 'smoothed_heatmap.png'
 
     matcher = PatternPredict(base_params, scales, freq_range, target_path)
     result = matcher.find_best_match()

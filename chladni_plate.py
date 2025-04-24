@@ -79,7 +79,7 @@ if __name__ == '__main__':
         m_max=10, n_max=10,
         Nx=200, Ny=200,
     )
-    freq = 39.0
+    freq = 77.0
     Z = plate.compute_response(freq)
     I = plate.compute_intensity(Z)
 
