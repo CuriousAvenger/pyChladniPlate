@@ -1,101 +1,124 @@
+#!/usr/bin/env python3
 import numpy as np
+from typing import Tuple
 import matplotlib.pyplot as plt
 
+
 class ChladniPlate:
+    """
+    /**
+     * Simulator for vibration and nodal‐line patterns of a simply‐supported rectangular plate
+     * driven by a point force.
+     */
+    """
+
     def __init__(
-        self, a: float, b: float, h: float,
-        rho: float, E: float, nu: float,
-        F0: float, c_damp: float, m_max: int,
-        n_max: int, Nx: int, Ny: int,
-        x0: float = None, y0: float = None,
-    ):
-        self.a, self.b, self.h = a, b, h
-        self.rho, self.E, self.nu = rho, E, nu
-        self.F0, self.c_damp = F0, c_damp
-        self.m_max, self.n_max = m_max, n_max
-        self.Nx, self.Ny = Nx, Ny
-        self.x0 = x0 if x0 is not None else a / 2
-        self.y0 = y0 if y0 is not None else b / 2
+        self,
+        a: float,
+        b: float,
+        h: float,
+        rho: float,
+        E: float,
+        nu: float,
+        zeta: float
+    ) -> None:
+        """
+        /**
+         * Initialize plate geometry and material properties.
+         *
+         * @param a    Plate width (m).
+         * @param b    Plate height (m).
+         * @param h    Plate thickness (m).
+         * @param rho  Material density (kg/m³).
+         * @param E    Young's modulus (Pa).
+         * @param nu   Poisson's ratio (dimensionless).
+         * @param zeta Modal damping ratio (dimensionless).
+         */
+        """
+        self.a: float = a
+        self.b: float = b
+        self.h: float = h
+        self.rho: float = rho
+        self.E: float = E
+        self.nu: float = nu
+        self.zeta: float = zeta
 
-        self._compute_derived_constants()
-        self._compute_modal_coefficients()
-        self._compute_modal_shapes()
+        # Flexural rigidity D = E·h³ / [12·(1 – ν²)]
+        self.D: float = (self.E * self.h**3) / (12 * (1 - self.nu**2))
 
-    def _compute_derived_constants(self):
-        self.rho_h = self.rho * self.h
-        self.D = self.E * self.h**3 / (12 * (1 - self.nu**2))
-        self.scale = np.sqrt(self.D / self.rho_h)
+    def compute_contours(
+        self,
+        freq: float,
+        F0: float,
+        x0: float,
+        y0: float,
+        num_points: int = 200,
+        mode_max: int = 20
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        /**
+         * Compute steady-state complex displacement field W(x,y) and
+         * a normalized nodal-likelihood map Lw(x,y).
+         *
+         * @param freq       Driving frequency in Hz.
+         * @param F0         Forcing amplitude in N.
+         * @param x0         x-coordinate of force application (m).
+         * @param y0         y-coordinate of force application (m).
+         * @param num_points Grid resolution (points per side).
+         * @param mode_max   Maximum modal index m,n.
+         * @return X         2D array of x-coordinates (shape: num_points×num_points).
+         * @return Y         2D array of y-coordinates (shape: num_points×num_points).
+         * @return W         Complex displacement field (shape: num_points×num_points).
+         * @return Lw        Normalized nodal-likelihood map ∈ [0,1].
+         */
+        """
+        # Store drive parameters
+        self.freq: float = freq
+        self.F0: float = F0
+        self.x0: float = x0
+        self.y0: float = y0
+        self.omega: float = 2 * np.pi * self.freq
 
-    def _compute_modal_coefficients(self):
-        omegas, phi0 = [], []
-        for m in range(1, self.m_max + 1):
-            for n in range(1, self.n_max + 1):
-                k2 = (m / self.a)**2 + (n / self.b)**2
-                omega_mn = np.pi**2 * k2 * self.scale
-                omegas.append(omega_mn)
-                phi0.append(
-                    np.sin(m * np.pi * self.x0 / self.a) *
-                    np.sin(n * np.pi * self.y0 / self.b)
+        # Create uniform grid
+        x = np.linspace(0, self.a, num_points)
+        y = np.linspace(0, self.b, num_points)
+        X, Y = np.meshgrid(x, y)
+
+        # Modal superposition for complex displacement W
+        W = np.zeros_like(X, dtype=complex)
+        for m in range(1, mode_max + 1):
+            for n in range(1, mode_max + 1):
+                Phi_mn = (
+                    np.sin(m * np.pi * X / self.a) *
+                    np.sin(n * np.pi * Y / self.b)
                 )
-        self.omegas = np.array(omegas)
-        self.phi0 = np.array(phi0)
-
-    def _compute_modal_shapes(self):
-        x = np.linspace(0, self.a, self.Nx)
-        y = np.linspace(0, self.b, self.Ny)
-        self.xx, self.yy = np.meshgrid(x, y)
-        phis = []
-        for m in range(1, self.m_max + 1):
-            for n in range(1, self.n_max + 1):
-                phis.append(
-                    np.sin(m * np.pi * self.xx / self.a) *
-                    np.sin(n * np.pi * self.yy / self.b)
+                omega_mn = np.sqrt(
+                    (self.D / (self.rho * self.h)) *
+                    ((m * np.pi / self.a)**2 + (n * np.pi / self.b)**2)**2
                 )
-        self.phis = np.stack(phis, axis=0)
+                denom = (
+                    self.rho * self.h *
+                    (omega_mn**2 - self.omega**2 +
+                     1j * 2 * self.zeta * omega_mn * self.omega)
+                )
+                Phi0 = (
+                    np.sin(m * np.pi * x0 / self.a) *
+                    np.sin(n * np.pi * y0 / self.b)
+                )
+                W += (F0 * Phi0 / denom) * Phi_mn
 
-    def compute_response(self, freq: float) -> np.ndarray:
-        omega_drive = 2 * np.pi * freq
-        denom = self.rho_h * (self.omegas**2 - omega_drive**2) + self.c_damp * omega_drive
-        A = self.F0 * self.phi0 / denom
-        return np.tensordot(A, self.phis, axes=(0, 0))
+        # Build nodal-likelihood from real part of W
+        amp = np.abs(W.real)
+        amin, amax = amp.min(), amp.max()
+        likelihood = 1.0 - (amp - amin) / (amax - amin)
 
-    def compute_intensity(self, Z: np.ndarray) -> np.ndarray:
-        Znorm = np.abs(Z)
-        Znorm /= Znorm.max()
-        dist_edge = np.minimum.reduce([
-            self.xx, self.a - self.xx,
-            self.yy, self.b - self.yy
-        ])
-        w = np.clip(1 - (dist_edge * 2 / min(self.a, self.b)), 0, 1)
-        return np.clip(Znorm * (1 - w) + w, 0, 1)
-    
+        # Edge‐taper mask to downweight boundary effects
+        nx, ny = likelihood.shape
+        wx = 1 - np.abs(2 * np.linspace(0, 1, nx) - 1)
+        wy = 1 - np.abs(2 * np.linspace(0, 1, ny) - 1)
+        mask = np.outer(wx, wy)
 
-if __name__ == '__main__':
-    plate = ChladniPlate(
-        a=0.24, b=0.24,
-        h=0.0008, rho=3125,
-        E=1e9, nu=0.3,
-        F0=1.0, c_damp=5.0,
-        m_max=10, n_max=10,
-        Nx=200, Ny=200,
-    )
-    freq = 77.0
-    Z = plate.compute_response(freq)
-    I = plate.compute_intensity(Z)
+        Lw = likelihood * mask
+        Lw = (Lw - Lw.min()) / (Lw.max() - Lw.min())
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    im = ax.imshow(
-        I,
-        origin='lower',
-        extent=(0, plate.a, 0, plate.b),
-        cmap='Blues_r',
-        aspect='equal',
-        interpolation='bicubic'
-    )
-    plt.colorbar(im, ax=ax, label='Normalized Intensity')
-    ax.set_title(f"Chladni Plate — {freq:.1f} Hz")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-    plt.tight_layout()
-    plt.show()
-
+        return X, Y, W, Lw
