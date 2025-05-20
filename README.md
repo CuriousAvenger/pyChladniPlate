@@ -1,6 +1,6 @@
 # Chladni Plate
 
-pyChladniPlate is a Python library for modeling and analyzing Chladni plate vibration patterns through a combination of theoretical simulation and image-based experimental matching. It provides a **ChladniPlate** class that computes steady-state displacement fields and normalized nodal-likelihood maps via modal superposition on a simply-supported rectangular plate ([GitHub][1]), and a **ChladniPredict** class that extracts skeletonized nodal lines from experimental images, maps them to physical plate coordinates across a range of scales, and sweeps driving frequencies to identify the best match ([GitHub][2]).
+pyChladniPlate is a Python library for modeling and analyzing Chladni plate vibration patterns through a combination of theoretical simulation and image-based experimental matching. It provides a **ChladniPlate** class that computes steady-state displacement fields and normalized nodal-likelihood maps via modal superposition on a simply-supported rectangular plate, and a **ChladniPredict** class that extracts skeletonized nodal lines from experimental images, maps them to physical plate coordinates across a range of scales, and sweeps driving frequencies to identify the best match.
 
 ## Features
 
