@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
 from typing import Tuple
-import matplotlib.pyplot as plt
-
 
 class ChladniPlate:
     """
@@ -122,3 +120,39 @@ class ChladniPlate:
         Lw = (Lw - Lw.min()) / (Lw.max() - Lw.min())
 
         return X, Y, W, Lw
+    
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    # --- User‐adjustable parameters ---
+    freq       = 2100             # drive frequency in Hz
+    F0         = 1.0            # forcing amplitude in N
+    x0, y0     = 0.12, 0.12      # driver location (m)
+    num_points = 300             # grid resolution
+    mode_max   = 20               # include modes 1..8
+
+    # Plate properties (match your simulation parameters)
+    a, b   = 0.24, 0.24          # plate dimensions (m)
+    h      = 0.0005              # thickness (m)
+    rho    = 7850                # density (kg/m³)
+    E      = 200e9               # Young’s modulus (Pa)
+    nu     = 0.3                 # Poisson’s ratio
+    zeta   = 0.01                # modal damping ratio
+
+    # Instantiate and compute
+    plate = ChladniPlate(a, b, h, rho, E, nu, zeta)
+    X, Y, W, Lw = plate.compute_contours(
+        freq, F0, x0, y0,
+        num_points=num_points,
+        mode_max=mode_max
+    )
+
+    # Plot nodal lines (zero‐contour of the real part)
+    plt.figure(figsize=(6,6))
+    plt.contour(X, Y, W.real, levels=[0], linewidths=1.5, colors='black')
+    plt.title(f"Chladni Nodal Lines at {freq} Hz")
+    plt.xlabel("x (m)")
+    plt.ylabel("y (m)")
+    plt.axis('equal')
+    plt.tight_layout()
+    plt.show()

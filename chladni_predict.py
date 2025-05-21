@@ -43,7 +43,6 @@ class ChladniPredict:
         self.freqs     = freqs
         self.scales    = scales
         self.img_path  = img_path
-        # Results: list of tuples (scale, freq, mean_dist, raw_pct_err, contour_count, adjusted_err)
         self.results: List[Tuple[float, float, float, float, int, float]] = []
 
     def _extract_skeleton(self, im_gray: np.ndarray,
@@ -207,34 +206,20 @@ class ChladniPredict:
             x0=self.a/2, y0=self.b/2,
             num_points=200, mode_max=20
         )
-        Z = W.real
-        raw_contours = find_contours(Z, 0.0)
 
-        # 1) Raw Image
-        plt.figure()
-        plt.imshow(im_rgb)
-        plt.title("Raw Image")
-        plt.axis('off')
-
-        # 2) Normalized + skeleton on gray
+        # Normalized + skeleton on gray
+        plt.figure(figsize=(6,6))
         norm = (im_gray - im_gray.min()) / (im_gray.max() - im_gray.min())
         ys, xs = np.nonzero(skel)
-        plt.figure()
         plt.imshow(norm, cmap='gray')
         plt.scatter(xs, ys, s=1, c='red')
         plt.title(f"Normalized + Skeleton (scale={best_scale:.2f})")
         plt.axis('off')
 
-        # 3) Physical overlay of skeleton and model
+        # Physical overlay of skeleton and model
         plt.figure(figsize=(6,6))
-        # skeleton
         plt.scatter(x_phys, y_phys, s=1, c='black', label='Skeleton')
-        # model contours
-        dx = self.a / (Z.shape[1] - 1)
-        dy = self.b / (Z.shape[0] - 1)
-        for contour in raw_contours:
-            xy = np.column_stack([contour[:, 1] * dx, contour[:, 0] * dy])
-            plt.plot(xy[:, 0], xy[:, 1], 'r-', linewidth=1, label='Model')
+        plt.contour(X, Y, W.real, levels=[0], linewidths=1.5, colors='red', label='Nodal Lines')
         plt.xlabel('x (m)')
         plt.ylabel('y (m)')
         plt.title(f'Skeleton vs Model Contours @ {best_freq:.0f} Hz')
